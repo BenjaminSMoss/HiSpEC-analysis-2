@@ -61,7 +61,7 @@ class SpEC:
         return (self.CV,)
 
     def generate_interpolation_function(
-        self, startin_samp: float = 1, starting_phase: float = 0
+        self, startin_samp: float = 1, starting_phase: float = 0, starting_offset: float = 0
     ):
         """
         This function reads the CV attribute of self. It reads the collumns
@@ -89,7 +89,7 @@ class SpEC:
         max_cycles = int(CV["Cycle"].max())
         print(max_cycles)
         # Initial guess for the parameters [amplitude, phase], period is the max time
-        initial_guess = [startin_samp, x_data.max() / max_cycles, starting_phase]
+        initial_guess = [startin_samp, x_data.max() / max_cycles, starting_phase, starting_offset]
 
         # Fit the data to the custom sawtooth function
         popt, pcov = curve_fit(
@@ -101,7 +101,7 @@ class SpEC:
             maxfev=100000,  # Increase the number of iterations
         )
         # Extract the optimal parameters
-        amplitude_fit, period_fit, phase_fit = popt
+        amplitude_fit, period_fit, phase_fit, offset_fit = popt
 
         # Print the fitted parameters
         print(
@@ -109,6 +109,7 @@ class SpEC:
         Amplitude:{amplitude_fit}
         Period:{period_fit}
         Phase: {phase_fit} 
+        Offset: {offset_fit}
         by passing (time_array, fitted parametes) you can interpolate t-->V
         NOTE this function is only as accurate as the CV's sampling rate
         by rounding the values to the parameters used you will get the best result 
@@ -116,7 +117,7 @@ class SpEC:
         )
 
         # Generate fitted data
-        y_fit = sawtooth2(x_data, amplitude_fit, period_fit, phase_fit)
+        y_fit = sawtooth2(x_data, amplitude_fit, period_fit, phase_fit, offset_fit)
 
         # Plot the original data and the fitted data
         fig, ax = plt.subplots()
@@ -131,7 +132,7 @@ class SpEC:
         ax.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         plt.show()
 
-        self.interpolation = (amplitude_fit, period_fit, phase_fit)
+        self.interpolation = (amplitude_fit, period_fit, phase_fit, offset_fit)
         return self.interpolation
 
     def read_Andorspec(self, Andorspec_file_path: Path):
@@ -407,7 +408,7 @@ def change_directory_to_new_expt():
     return os.chdir(file_path)
 
 
-def sawtooth2(time, amplitude, period, phase):
+def sawtooth2(time, amplitude, period, phase, offset):
     """This function generates a sawtooth wave with the following parameters:
     Once, fitted is used to generate an interpolation function from t-->V.
     time: time array
@@ -415,7 +416,7 @@ def sawtooth2(time, amplitude, period, phase):
     period: period of the wave
     phase: phase of the wave
     """
-    return amplitude * sawtooth((2 * np.pi * time) / (period) - phase, 0.5)
+    return (amplitude * sawtooth((2 * np.pi * time) / (period) - phase, 0.5) + offset)
 
 
 def Downsample_Potential(SpEC_scans_dataframe, voltage_resolution: float):
